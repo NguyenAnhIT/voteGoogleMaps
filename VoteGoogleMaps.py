@@ -13,12 +13,14 @@ from selenium import webdriver
 from time import sleep
 import requests
 import json
-
+import uuid
+import requests
 from selenium.webdriver import Keys
+import pyperclip
 _count = -1
 
 class UI(QMainWindow):
-    def __init__(self):
+    def __init__(self,hsd = ''):
         super(UI, self).__init__()
         uic.loadUi("DATA/untitled.ui", self)
         self.pushButton = self.findChild(QPushButton,'pushButton')
@@ -26,8 +28,13 @@ class UI(QMainWindow):
         self.pushButton_2 = self.findChild(QPushButton,'pushButton_2')
         self.pushButton_2.clicked.connect(self.stop)
         self.tableWidget = self.findChild(QTableWidget,'tableWidget')
+        self.label_3 = self.findChild(QLabel,'label_3')
+        self.label_3.setText(f'Tool Bản Quyền Thuộc Về Hữu Chris . Ngày hết hạn : {hsd}')
         self.spinBox = self.findChild(QSpinBox,'spinBox')
         self.checkBox = self.findChild(QCheckBox,'checkBox')
+        self.checkBox_2 = self.findChild(QCheckBox,'checkBox_2')
+        self.checkBox_3 = self.findChild(QCheckBox,'checkBox_3')
+        self.checkBox_4 = self.findChild(QCheckBox,'checkBox_4')
         self.childStartThread = {}
         self.setTableWidget()
         self.show()
@@ -37,6 +44,9 @@ class UI(QMainWindow):
         for i in range(0,self.spinBox.value()):
             self.childStartThread[i] = StartThread(index=i)
             self.childStartThread[i].checkBox = self.checkBox
+            self.childStartThread[i].checkBox_2 = self.checkBox_2
+            self.childStartThread[i].checkBox_3 = self.checkBox_3
+            self.childStartThread[i].checkBox_4 = self.checkBox_4
             self.childStartThread[i].start()
             self.childStartThread[i].showStatus.connect(self.showStatus)
 
@@ -81,6 +91,9 @@ class StartThread(QThread):
             self.count = _count
             if _count > len(rA)-1:break
             self.handle()
+        # images = self.getimages()
+        # for image in images:
+        #     print(image)
 
 
 
@@ -175,22 +188,25 @@ class StartThread(QThread):
 
                 sleep(5)
             # handle Another
-                check = self.handleBackdoor()
-                if check == False:
-                    for i in range(0, 50):
-                        self.browser.find_element_by_xpath('//*[@id="QA0Szd"]/div/div/div[1]/div[2]/div/div[1]').send_keys(Keys.DOWN)
-                        sleep(0.1)
-                    # Handle Review
+            #     check = self.handleBackdoor()
+            #     if check == False:
+                for i in range(0, 50):
+                    self.browser.find_element_by_xpath('//*[@id="QA0Szd"]/div/div/div[1]/div[2]/div/div[1]').send_keys(Keys.DOWN)
+                    sleep(0.1)
+                # Handle Review
+                if self.checkBox_2.isChecked():
                     self.handleReview()
 
-                    self.browser.switch_to.default_content()
 
-                    # Handle Add Picture
+                self.browser.switch_to.default_content()
+
+                # Handle Add Picture
+                if self.checkBox_3.isChecked():
                     self.handleAddPicture()
 
-                    self.showStatus.emit(self.count, 'Thành công . Đang dọn dẹp hệ thống !')
-                    sleep(randint(5,8))
-                    self.showStatus.emit(self.count, 'Thành công !!!')
+                self.showStatus.emit(self.count, 'Thành công . Đang dọn dẹp hệ thống !')
+                sleep(randint(5,8))
+                self.showStatus.emit(self.count, 'Thành công !!!')
             self.close()
             self.showStatus.emit(self.count, 'Thành công !!!')
         except ZeroDivisionError:
@@ -235,20 +251,29 @@ class StartThread(QThread):
             message = self.getMessage()
             self.browser.find_element_by_css_selector('textarea').send_keys(message)
             sleep(2)
-            self.browser.find_elements_by_css_selector('button')[2].click()
+            # self.browser.find_elements_by_css_selector('button')[2].click()
+            # sleep(randint(3, 5))
+            self.browser.find_elements_by_css_selector('button[jscontroller="soHxf"]')[2].click()
+            # Check Review
+            checkReview = self.browser.find_elements_by_css_selector('button[jscontroller="soHxf"]')
+            if len(checkReview) > 3:
+                checkReview[0].click()
+                sleep(3)
+                self.browser.find_elements_by_css_selector('button[jscontroller="soHxf"]')[2].click()
             sleep(randint(3, 5))
-            self.browser.find_elements_by_css_selector('button')[0].click()
-            sleep(randint(3, 5))
+            self.browser.find_element_by_css_selector('button[jscontroller="soHxf"]').click()
         except:
             return
     def getimages(self):
         while True:
             path = os.getcwd()
-            folderimg = path + '/DATA/Images'
+            folderimg = path + '/DATA/Images' if self.checkBox_4.isChecked() else path + '/DATA/Image'
             listimg = os.listdir(folderimg)
-            rdImg = randint(0,len(listimg)-1)
-            if filetype.is_image(folderimg+'/'+ listimg[rdImg]):
-                return folderimg + '/' + listimg[rdImg]
+            images = []
+            for image in listimg:
+                if filetype.is_image(folderimg + '/' + image):
+                    images.append(os.path.join(folderimg,image))
+            return images
 
     # Get Message
     def getMessage(self):
@@ -278,52 +303,112 @@ class StartThread(QThread):
             self.browser.switch_to.frame(iframe)
             sleep(2)
             # Find Input Files and send Picture to input
-            pathPicture = self.getimages()
-            self.browser.find_element_by_css_selector('input[type="file"]').send_keys(pathPicture)
+            if self.checkBox_4.isChecked():
+                images = self.getimages()
+                for image in images:
+                    self.browser.find_element_by_css_selector('input[type="file"]').send_keys(image)
+            else:
+                images = self.getimages()
+                rdImage = random.randint(0,len(images)-1)
+                self.browser.find_element_by_css_selector('input[type="file"]').send_keys(images[rdImage])
+            # self.browser.find_element_by_css_selector('input[type="file"]').send_keys('/Users/nguyenanh/PycharmProjects/VoteGoogleMaps/DATA/Images/img_1.png','/Users/nguyenanh/PycharmProjects/VoteGoogleMaps/DATA/Images/img_2.png','/Users/nguyenanh/PycharmProjects/VoteGoogleMaps/DATA/Images/img.png')
+
             sleep(randint(6, 10))
             self.browser.switch_to.default_content()
-            self.browser.find_element_by_css_selector('button[jsaction="modal.close"]').click()
+            for i in range(0,10):
+                try:
+                    self.browser.find_element_by_css_selector('button[jsaction="modal.close"]').click()
+                    break
+                except:
+                    sleep(1)
+            sleep(3)
+
+
             #self.browser.find_element_by_xpath('//*[@id="last-focusable-in-modal"]').click()
+            #self.browser.find_elements_by_css_selector('button[jscontroller="soHxf"]')[2].click()
         except:
             return
 
 
     def handleBackdoor(self):
-        try:
-            countA = 0
-            div = self.browser.find_element_by_css_selector('div[class="w6VYqd"]')
-            aDiv = div.find_elements_by_css_selector('a')
+        #try:
+        countA = 0
+        div = self.browser.find_element_by_css_selector('div[class="w6VYqd"]')
+        aDiv = div.find_elements_by_css_selector('a')
+        sleep(3)
+        for i in range(0,len(aDiv)):
+            self.showStatus.emit(self.count, 'Đang xử lý !!!')
+            div.find_elements_by_css_selector('a')[i].click()
             sleep(3)
-            for i in range(0,len(aDiv)):
-                self.showStatus.emit(self.count, 'Đang xử lý !!!')
-                div.find_elements_by_css_selector('a')[i].click()
-                sleep(3)
-                # Handle Review
+            # Handle Review
+
+            if self.checkBox_2.isChecked():
                 self.handleReview()
 
-                self.browser.switch_to.default_content()
+            self.browser.switch_to.default_content()
 
-                # Handle Add Picture
+            # Handle Add Picture
+            if self.checkBox_3.isChecked():
                 self.handleAddPicture()
 
-                self.showStatus.emit(self.index, 'Thành công . Đang dọn dẹp hệ thống !')
-                sleep(randint(5,8))
-                self.showStatus.emit(self.index, 'Thành công !!!')
-                countA += 1
-                if countA == 10:break
-        except:
-            print('Loi')
-            return False
+            self.showStatus.emit(self.index, 'Thành công . Đang dọn dẹp hệ thống !')
+            sleep(randint(5,8))
+            self.showStatus.emit(self.index, 'Thành công !!!')
+            break
+        # except:
+        #     print('Loi')
+        #     return False
 
 
     def handleKeyword(self,index):
         with open('DATA/keyword.txt' ,'r',encoding='utf8') as rK:rK = rK.readlines()
         return rK[index],len(rK)
 
+class HandleKey(QMainWindow):
+    def __init__(self):
+        super(HandleKey, self).__init__()
+        uic.loadUi("DATA/untitled1.ui", self)
+        self.label = self.findChild(QLabel,'label')
+        self.label_2 = self.findChild(QLabel,'label_2')
+        self.pushButton = self.findChild(QPushButton,'pushButton')
+        self.pushButton.clicked.connect(self.btnCLicked)
+        keyID = str(uuid.uuid1())
+        self.keyID = keyID.replace('-', '')
+        self.label_2.setText(f'Mã máy kích hoạt của bạn : {self.keyID}')
+
+
+        self.show()
+
+    def btnCLicked(self):
+        pyperclip.copy(self.keyID)
+        #self.label_2.setText('Copy Key Thành Công')
+
+
 
 
 if __name__ == '__main__':
     import sys
+
     app = QApplication(sys.argv)
-    UiWindow = UI()
+    keyID = str(uuid.uuid1())
+    keyID = keyID.replace('-', '')
+
+    url = 'http://echipauto.com/config_keycomputer.php'
+
+    payloads = {
+        'mail': 'votegooglemaps',
+        'pass': '123456',
+        'mamay': keyID[-9:],
+        'id': '9995119',
+        'submit': 'submit'
+    }
+    response = requests.post(url,data=payloads)
+    response = json.loads(response.text)
+    if response.get('status','') == 'success':
+        hsd = response.get('hsd','')
+        UiWindow = UI(hsd)
+    else:
+        UiKey = HandleKey()
+
+
     app.exec()
